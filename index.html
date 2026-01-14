@@ -1,0 +1,527 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>裝備精煉期望值計算器</title>
+  <style>
+    body { font-family: system-ui, -apple-system, "Segoe UI", Arial, sans-serif; margin: 24px; }
+    .wrap { max-width: 980px; margin: 0 auto; }
+    h1 { font-size: 20px; margin: 0 0 12px; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .card { border: 1px solid #ddd; border-radius: 10px; padding: 14px; }
+    .row { display: flex; gap: 10px; align-items: center; margin: 8px 0; flex-wrap: wrap; }
+    label { font-size: 13px; }
+    input[type="number"] { width: 120px; padding: 6px 8px; }
+    select { padding: 6px 8px; }
+    .prices { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 12px; }
+    .prices .p { display: flex; justify-content: space-between; gap: 10px; align-items: center; }
+    .prices .p input { width: 140px; }
+    button { padding: 10px 14px; border: 1px solid #333; background: #fff; border-radius: 10px; cursor: pointer; }
+    button:hover { background: #f6f6f6; }
+    textarea { width: 100%; height: 420px; padding: 10px; border-radius: 10px; border: 1px solid #ddd; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; }
+    .hint { color: #666; font-size: 12px; margin-top: 8px; line-height: 1.4; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <h1>裝備精煉期望值計算器（純前端）</h1>
+
+  <div class="grid">
+    <div class="card">
+      <div class="row">
+        <label>目標 Target：</label>
+        <select id="target">
+          <option value="1">+1</option><option value="2">+2</option><option value="3">+3</option><option value="4">+4</option>
+          <option value="5">+5</option><option value="6">+6</option><option value="7">+7</option><option value="8">+8</option>
+          <option value="9">+9</option><option value="10">+10</option><option value="11">+11</option><option value="12">+12</option>
+          <option value="13">+13</option><option value="14" selected>+14</option>
+        </select>
+      </div>
+
+      <div class="row">
+        <label>裝備：</label>
+        <label><input type="radio" name="gear" value="armor" checked> 防具（鋁/鈣）</label>
+        <label><input type="radio" name="gear" value="weapon"> 武器（神金/鈽鐳）</label>
+      </div>
+
+      <div class="row">
+        <label><input type="checkbox" id="allowCond" checked> 允許濃縮/高濃縮</label>
+        <label><input type="checkbox" id="allowBless" checked> 允許祝福（防爆&防退）</label>
+        <label><input type="checkbox" id="forceNoBless"> 強制全程不用祝福</label>
+      </div>
+
+      <div class="row">
+        <label>策略：</label>
+        <label><input type="radio" name="mode" value="optimal" checked> 自動最省</label>
+        <label><input type="radio" name="mode" value="fixed"> 固定策略</label>
+      </div>
+
+      <div class="row">
+        <label>固定策略：從 +</label>
+        <input type="number" id="fixedFrom" min="0" max="13" value="7" />
+        <label>以上用濃縮/高濃縮</label>
+        <label style="margin-left:8px;"><input type="checkbox" id="fixedUseBless" checked> 固定策略允許祝福</label>
+      </div>
+
+      <div class="hint">
+        <div>規則假設：</div>
+        <div class="mono">- 3~9：普通失敗 -3；濃縮失敗 -1</div>
+        <div class="mono">- 10~13：失敗裝備消失（當作回到 +0）</div>
+        <div class="mono">- 祝福（防爆&防退）：失敗留在原等級（stay）</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div style="font-weight:600; margin-bottom:8px;">材料實價</div>
+      <div class="prices" id="prices"></div>
+
+      <div class="row" style="margin-top:12px;">
+        <button id="calc">計算（重算）</button>
+        <button id="copy">複製結果</button>
+      </div>
+      <div class="hint">
+        * 本工具是純前端：所有計算都在你的瀏覽器跑（吃使用者電腦資源，不吃伺服器）。
+      </div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:16px;">
+    <div style="font-weight:600; margin-bottom:8px;">結果</div>
+    <textarea id="out" readonly></textarea>
+  </div>
+</div>
+
+<script>
+/** ===== Rules (same as your table; target up to +14) ===== **/
+const P_SUCCESS_NORMAL = {
+  0:1.00, 1:1.00, 2:1.00,
+  3:0.60, 4:0.60, 5:0.40, 6:0.40, 7:0.20, 8:0.20, 9:0.09,
+  10:0.08, 11:0.08, 12:0.08, 13:0.08,
+};
+
+const P_SUCCESS_COND = {
+  3:0.90, 4:0.70, 5:0.60, 6:0.60, 7:0.40, 8:0.40, 9:0.20,
+  10:0.15, 11:0.15, 12:0.15, 13:0.15,
+};
+
+// Bless required (i means i->i+1)
+const BLESS_REQ = { 7:1, 8:2, 9:3, 10:4, 11:4, 12:9, 13:15 };
+
+// Protection behavior: fail => stay
+const FAIL_TO_PROTECTED = "stay";
+
+function failRuleNormal(i){ return (i <= 9) ? "down:3" : "destroy"; }
+function failRuleCond(i){ return (i <= 9) ? "down:1" : "destroy"; }
+
+function applyFail(i, failTo){
+  if (failTo === "stay") return i;
+  if (failTo === "destroy") return 0;
+  if (failTo.startsWith("down:")){
+    const k = parseInt(failTo.split(":")[1], 10);
+    return Math.max(i - k, 0);
+  }
+  throw new Error("Unknown fail_to: " + failTo);
+}
+
+/** ===== Materials mapping ===== **/
+function materialForSegment(gear, i, mode){
+  // gear: "armor"|"weapon"
+  // mode: "normal"|"condensed"|"high"
+  if (gear === "armor"){
+    if (i <= 9){
+      return (mode === "normal") ? "乙太鋁" : "濃縮乙太鋁";
+    } else {
+      return (mode === "normal") ? "乙太鈣礦石" : "高濃縮乙太鋁";
+    }
+  } else {
+    if (i <= 9){
+      return (mode === "normal") ? "乙太神之金屬" : "濃縮乙太神之金屬";
+    } else {
+      return (mode === "normal") ? "乙太鈽鐳礦石" : "高濃縮乙太神之金屬";
+    }
+  }
+}
+
+function fmt(n){
+  return Math.round(n).toLocaleString("en-US");
+}
+
+/** ===== Build actions ===== **/
+function buildActions(gear, prices, target, opts){
+  const { allowCondensed, allowBless, forceNoBless } = opts;
+  const blessPrice = prices["鐵匠的祝福"];
+  const allowProt = allowBless && !forceNoBless;
+
+  const actionsByLevel = {};
+  for (let i=0; i<target; i++){
+    const acts = [];
+
+    // normal
+    const psN = P_SUCCESS_NORMAL[i];
+    const matN = materialForSegment(gear, i, "normal");
+    const costN = prices[matN];
+    acts.push({ name:`normal(${matN})`, ps:psN, failTo:failRuleNormal(i), cost:costN });
+
+    if (allowProt && BLESS_REQ[i] != null){
+      const qty = BLESS_REQ[i];
+      acts.push({ name:`normal+protect(x${qty})`, ps:psN, failTo:FAIL_TO_PROTECTED, cost:costN + qty*blessPrice });
+    }
+
+    // condensed/high
+    if (allowCondensed && P_SUCCESS_COND[i] != null){
+      const psC = P_SUCCESS_COND[i];
+      const mode = (i <= 9) ? "condensed" : "high";
+      const matC = materialForSegment(gear, i, mode);
+      const costC = prices[matC];
+      acts.push({ name:`${mode}(${matC})`, ps:psC, failTo:failRuleCond(i), cost:costC });
+
+      if (allowProt && BLESS_REQ[i] != null){
+        const qty = BLESS_REQ[i];
+        acts.push({ name:`${mode}+protect(x${qty})`, ps:psC, failTo:FAIL_TO_PROTECTED, cost:costC + qty*blessPrice });
+      }
+    }
+
+    actionsByLevel[i] = acts;
+  }
+  return actionsByLevel;
+}
+
+/** ===== Optimal EV (value iteration) ===== **/
+function expectedCostOptimal(actionsByLevel, target){
+  const E = new Array(target+1).fill(0);
+  const best = new Array(target+1).fill("");
+  E[target] = 0;
+
+  const tol = 1e-10;
+  const maxIter = 200000;
+
+  for (let iter=0; iter<maxIter; iter++){
+    let maxDiff = 0;
+    const Eold = E.slice();
+    const bestOld = best.slice();
+
+    for (let i=0; i<target; i++){
+      let bestVal = Infinity;
+      let bestName = "";
+      const acts = actionsByLevel[i];
+
+      for (const a of acts){
+        const ps = a.ps;
+        const pf = 1 - ps;
+        const succ = Math.min(i+1, target);
+        const fail = applyFail(i, a.failTo);
+        const val = a.cost + ps*Eold[succ] + pf*Eold[fail];
+        if (val < bestVal){
+          bestVal = val;
+          bestName = a.name;
+        }
+      }
+      E[i] = bestVal;
+      best[i] = bestName;
+      maxDiff = Math.max(maxDiff, Math.abs(E[i] - Eold[i]));
+    }
+
+    let samePolicy = true;
+    for (let i=0; i<target; i++){
+      if (best[i] !== bestOld[i]) { samePolicy = false; break; }
+    }
+    if (maxDiff < tol && samePolicy) break;
+  }
+
+  return { E, best };
+}
+
+/** ===== Fixed policy (solve linear system) ===== **/
+function expectedCostFixed(actionsByLevel, chosen, target){
+  // Solve A x = b for x = E[0..target-1], E[target]=0
+  const A = Array.from({length: target}, () => new Array(target).fill(0));
+  const b = new Array(target).fill(0);
+
+  for (let i=0; i<target; i++){
+    const acts = {};
+    for (const a of actionsByLevel[i]) acts[a.name] = a;
+
+    const name = chosen[i];
+    const a = acts[name];
+    if (!a) throw new Error(`固定策略在 +${i} 選的 action 不存在：${name}`);
+
+    const ps = a.ps;
+    const pf = 1 - ps;
+    const succ = Math.min(i+1, target);
+    const fail = applyFail(i, a.failTo);
+
+    A[i][i] = 1;
+    b[i] = a.cost;
+
+    if (succ < target) A[i][succ] -= ps;
+    if (fail < target) A[i][fail] -= pf;
+  }
+
+  // Gaussian elimination (small system, target<=14)
+  const M = A.map((row, i) => row.concat([b[i]]));
+
+  for (let col=0; col<target; col++){
+    // pivot
+    let pivot = col;
+    for (let r=col; r<target; r++){
+      if (Math.abs(M[r][col]) > Math.abs(M[pivot][col])) pivot = r;
+    }
+    if (Math.abs(M[pivot][col]) < 1e-14) throw new Error("矩陣不可解（可能策略導致）");
+    if (pivot !== col){
+      const tmp = M[pivot]; M[pivot] = M[col]; M[col] = tmp;
+    }
+    // normalize
+    const div = M[col][col];
+    for (let c=col; c<=target; c++) M[col][c] /= div;
+
+    // eliminate
+    for (let r=0; r<target; r++){
+      if (r === col) continue;
+      const factor = M[r][col];
+      if (factor === 0) continue;
+      for (let c=col; c<=target; c++){
+        M[r][c] -= factor * M[col][c];
+      }
+    }
+  }
+
+  const E = new Array(target+1).fill(0);
+  for (let i=0; i<target; i++) E[i] = M[i][target];
+  E[target] = 0;
+  return E;
+}
+
+function buildFixedChoice(actionsByLevel, target, opts, fixedFrom, fixedUseBless){
+  const { allowCondensed, allowBless, forceNoBless } = opts;
+  const chosen = {};
+
+  for (let i=0; i<target; i++){
+    const available = actionsByLevel[i].map(a => a.name);
+    const wantBless = fixedUseBless && allowBless && !forceNoBless;
+    const canBless = wantBless && available.some(n => n.includes("+protect"));
+
+    const preferCond = allowCondensed && (i >= fixedFrom) && (P_SUCCESS_COND[i] != null);
+
+    if (preferCond){
+      const prefix = (i <= 9) ? "condensed" : "high";
+      let pick = null;
+      if (canBless){
+        pick = available.find(n => n.startsWith(prefix + "+protect")) || null;
+      }
+      if (!pick){
+        pick = available.find(n => n.startsWith(prefix + "(")) || null;
+      }
+      if (!pick){
+        // fallback normal
+        if (canBless) pick = available.find(n => n.startsWith("normal+protect")) || null;
+        if (!pick) pick = available.find(n => n.startsWith("normal(")) || null;
+      }
+      chosen[i] = pick;
+    } else {
+      let pick = null;
+      if (canBless) pick = available.find(n => n.startsWith("normal+protect")) || null;
+      if (!pick) pick = available.find(n => n.startsWith("normal(")) || null;
+      chosen[i] = pick;
+    }
+
+    if (!chosen[i]) throw new Error(`+${i} 沒有可用的 action（設定太嚴格？）`);
+  }
+  return chosen;
+}
+
+/** ===== Main compute (for selected target) ===== **/
+function computeAll(gear, prices, opts, mode, fixedFrom, fixedUseBless, target){
+  const actionsT = buildActions(gear, prices, target, opts);
+
+  let E_to_T, best;
+  if (mode === "fixed"){
+    const chosen = buildFixedChoice(actionsT, target, opts, fixedFrom, fixedUseBless);
+    E_to_T = expectedCostFixed(actionsT, chosen, target);
+    best = new Array(target+1).fill("");
+    for (let i=0; i<target; i++) best[i] = chosen[i];
+  } else {
+    const res = expectedCostOptimal(actionsT, target);
+    E_to_T = res.E;
+    best = res.best;
+  }
+
+  // +0 -> +k (k=0..target)
+  const E_0_to_k = [0];
+  for (let k=1; k<=target; k++){
+    const actionsK = buildActions(gear, prices, k, opts);
+    if (mode === "fixed"){
+      const chosenK = buildFixedChoice(actionsK, k, opts, fixedFrom, fixedUseBless);
+      const Ek = expectedCostFixed(actionsK, chosenK, k);
+      E_0_to_k.push(Ek[0]);
+    } else {
+      const resK = expectedCostOptimal(actionsK, k);
+      E_0_to_k.push(resK.E[0]);
+    }
+  }
+
+  // interval costs
+  const segCosts = [];
+  for (let i=0; i<target; i++) segCosts.push(E_to_T[i] - E_to_T[i+1]);
+
+  // recommendations (only for optimal)
+  let firstCond=null, firstHigh=null, firstBless=null;
+  if (mode === "optimal"){
+    for (let i=0; i<target; i++){
+      const s = best[i] || "";
+      if (firstCond === null && s.startsWith("condensed")) firstCond = i;
+      if (firstHigh === null && s.startsWith("high")) firstHigh = i;
+      if (firstBless === null && s.includes("+protect")) firstBless = i;
+    }
+  }
+
+  return { E_to_T, best, E_0_to_k, segCosts, firstCond, firstHigh, firstBless };
+}
+
+/** ===== UI ===== **/
+const defaultPrices = {
+  "乙太鋁": 70000,
+  "濃縮乙太鋁": 990000,
+  "高濃縮乙太鋁": 1200000,
+  "乙太鈣礦石": 170000,
+  "乙太神之金屬": 85000,
+  "濃縮乙太神之金屬": 920000,
+  "高濃縮乙太神之金屬": 1000000,
+  "乙太鈽鐳礦石": 170000,
+  "鐵匠的祝福": 3700000,
+};
+const priceKeys = [
+  "乙太鋁","濃縮乙太鋁","高濃縮乙太鋁","乙太鈣礦石",
+  "乙太神之金屬","濃縮乙太神之金屬","高濃縮乙太神之金屬","乙太鈽鐳礦石",
+  "鐵匠的祝福"
+];
+
+function buildPriceInputs(){
+  const box = document.getElementById("prices");
+  box.innerHTML = "";
+  for (const k of priceKeys){
+    const div = document.createElement("div");
+    div.className = "p";
+    div.innerHTML = `
+      <label>${k}</label>
+      <input type="number" id="p_${k}" value="${defaultPrices[k]}" />
+    `;
+    box.appendChild(div);
+  }
+}
+
+function readPrices(){
+  const prices = {};
+  for (const k of priceKeys){
+    const el = document.getElementById("p_" + k);
+    const v = Number(el.value);
+    if (!Number.isFinite(v) || v < 0) throw new Error(`價格不正確：${k}`);
+    prices[k] = v;
+  }
+  return prices;
+}
+
+function getGear(){
+  return [...document.querySelectorAll('input[name="gear"]')].find(r => r.checked).value;
+}
+function getMode(){
+  return [...document.querySelectorAll('input[name="mode"]')].find(r => r.checked).value;
+}
+
+function render(){
+  const target = Number(document.getElementById("target").value);
+  const gear = getGear();
+  const mode = getMode();
+  const prices = readPrices();
+
+  const opts = {
+    allowCondensed: document.getElementById("allowCond").checked,
+    allowBless: document.getElementById("allowBless").checked,
+    forceNoBless: document.getElementById("forceNoBless").checked,
+  };
+
+  const fixedFrom = Number(document.getElementById("fixedFrom").value);
+  const fixedUseBless = document.getElementById("fixedUseBless").checked;
+
+  const res = computeAll(gear, prices, opts, mode, fixedFrom, fixedUseBless, target);
+
+  const lines = [];
+  lines.push(`=== 裝備精煉期望值計算（目標 +${target}）===`);
+  lines.push(`裝備類型：${gear === "armor" ? "防具(鋁/鈣)" : "武器(神金/鈽鐳)"}`);
+  lines.push(`策略模式：${mode === "optimal" ? "自動最省" : "固定策略"}`);
+  if (mode === "fixed"){
+    lines.push(`  固定策略：+${fixedFrom} 以上用濃縮/高濃縮；祝福=${(fixedUseBless && opts.allowBless && !opts.forceNoBless) ? "開" : "關"}`);
+  }
+  lines.push(`濃縮材料：${opts.allowCondensed ? "開" : "關"}`);
+  lines.push(`祝福：${(opts.allowBless && !opts.forceNoBless) ? "開" : "關"}（強制不用祝福=${opts.forceNoBless ? "是" : "否"}）`);
+  lines.push(`防爆&防退失敗處理：失敗留在原等級 (stay)`);
+  lines.push("");
+
+  lines.push("---- 建議門檻（依『自動最省』結果）----");
+  if (mode === "fixed"){
+    lines.push("（固定策略模式：門檻由你指定，因此不提供自動建議）");
+  } else {
+    if (!opts.allowCondensed){
+      lines.push("濃縮材料已禁用：不提供濃縮/高濃縮建議");
+    } else {
+      lines.push(res.firstCond == null ? "濃縮建議：未使用 condensed" : `濃縮建議：從 +${res.firstCond} 開始用 condensed`);
+      lines.push(res.firstHigh == null ? "高濃縮建議：未使用 high（可能目標 < +10 或太貴）" : `高濃縮建議：從 +${res.firstHigh} 開始用 high`);
+    }
+    if (opts.allowBless && !opts.forceNoBless){
+      lines.push(res.firstBless == null ? "祝福建議：未使用祝福" : `祝福建議：從 +${res.firstBless} 起開始使用祝福`);
+    } else {
+      lines.push("祝福已禁用：不提供祝福建議");
+    }
+  }
+  lines.push("");
+
+  lines.push(`---- 從 +i 到 +${target} 的期望成本 ----`);
+  for (let i=0; i<=target; i++){
+    const v = res.E_to_T[i];
+    if (i === target){
+      lines.push(`+${String(i).padStart(2," ")} -> +${target} : ${fmt(v)}`);
+    } else {
+      lines.push(`+${String(i).padStart(2," ")} -> +${target} : ${fmt(v)}   | choice: ${res.best[i]}`);
+    }
+  }
+  lines.push("");
+
+  lines.push(`---- 區間成本（以目標 +${target} 的邊際期望）----`);
+  for (let i=0; i<target; i++){
+    lines.push(`+${String(i).padStart(2," ")} -> +${String(i+1).padStart(2," ")} : ${fmt(res.segCosts[i])}   | choice at +${i}: ${res.best[i]}`);
+  }
+  lines.push("");
+
+  lines.push(`---- 從 +0 到 +k 的期望成本（k=0..${target}）----`);
+  for (let k=0; k<=target; k++){
+    lines.push(`+0 -> +${String(k).padStart(2," ")} : ${fmt(res.E_0_to_k[k])}`);
+  }
+
+  document.getElementById("out").value = lines.join("\n");
+}
+
+buildPriceInputs();
+
+document.getElementById("calc").addEventListener("click", () => {
+  try { render(); } catch(e){ alert(e.message || String(e)); }
+});
+
+document.getElementById("copy").addEventListener("click", async () => {
+  const text = document.getElementById("out").value;
+  try {
+    await navigator.clipboard.writeText(text);
+    alert("已複製到剪貼簿");
+  } catch {
+    // fallback
+    document.getElementById("out").select();
+    document.execCommand("copy");
+    alert("已複製到剪貼簿（fallback）");
+  }
+});
+
+// Auto render once
+render();
+</script>
+</body>
+</html>
