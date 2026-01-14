@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>裝備精煉期望值計算器</title>
+  <title>裝備精煉期望值計算器 (五級武器二級防具)</title>
   <style>
     body { font-family: system-ui, -apple-system, "Segoe UI", Arial, sans-serif; margin: 24px; }
     .wrap { max-width: 980px; margin: 0 auto; }
@@ -26,7 +26,7 @@
 </head>
 <body>
 <div class="wrap">
-  <h1>裝備精煉期望值計算器（純前端）</h1>
+  <h1>裝備精煉期望值計算器(五級武器二級防具)</h1>
 
   <div class="grid">
     <div class="card">
@@ -62,19 +62,19 @@
         <label>固定策略：從 +</label>
         <input type="number" id="fixedFrom" min="0" max="13" value="7" />
         <label>以上用濃縮/高濃縮</label>
-        <label style="margin-left:8px;"><input type="checkbox" id="fixedUseBless" checked> 固定策略允許祝福</label>
+        <label style="margin-left:8px;"><input type="checkbox" id="fixedUseBless" checked> 固定策略允許鐵祝</label>
       </div>
 
       <div class="hint">
         <div>規則假設：</div>
         <div class="mono">- 3~9：普通失敗 -3；濃縮失敗 -1</div>
         <div class="mono">- 10~13：失敗裝備消失（當作回到 +0）</div>
-        <div class="mono">- 祝福（防爆&防退）：失敗留在原等級（stay）</div>
+        <div class="mono">- 鐵祝（防爆&防退）：失敗留在原等級（stay）</div>
       </div>
     </div>
 
     <div class="card">
-      <div style="font-weight:600; margin-bottom:8px;">材料實價</div>
+      <div style="font-weight:600; margin-bottom:8px;">材料實價 (去露天挖)</div>
       <div class="prices" id="prices"></div>
 
       <div class="row" style="margin-top:12px;">
@@ -451,10 +451,10 @@ function render(){
   lines.push(`裝備類型：${gear === "armor" ? "防具(鋁/鈣)" : "武器(神金/鈽鐳)"}`);
   lines.push(`策略模式：${mode === "optimal" ? "自動最省" : "固定策略"}`);
   if (mode === "fixed"){
-    lines.push(`  固定策略：+${fixedFrom} 以上用濃縮/高濃縮；祝福=${(fixedUseBless && opts.allowBless && !opts.forceNoBless) ? "開" : "關"}`);
+    lines.push(`  固定策略：+${fixedFrom} 以上用濃縮/高濃縮；鐵祝=${(fixedUseBless && opts.allowBless && !opts.forceNoBless) ? "開" : "關"}`);
   }
   lines.push(`濃縮材料：${opts.allowCondensed ? "開" : "關"}`);
-  lines.push(`祝福：${(opts.allowBless && !opts.forceNoBless) ? "開" : "關"}（強制不用祝福=${opts.forceNoBless ? "是" : "否"}）`);
+  lines.push(`鐵祝：${(opts.allowBless && !opts.forceNoBless) ? "開" : "關"}（強制不用祝福=${opts.forceNoBless ? "是" : "否"}）`);
   lines.push(`防爆&防退失敗處理：失敗留在原等級 (stay)`);
   lines.push("");
 
@@ -466,12 +466,12 @@ function render(){
       lines.push("濃縮材料已禁用：不提供濃縮/高濃縮建議");
     } else {
       lines.push(res.firstCond == null ? "濃縮建議：未使用 condensed" : `濃縮建議：從 +${res.firstCond} 開始用 condensed`);
-      lines.push(res.firstHigh == null ? "高濃縮建議：未使用 high（可能目標 < +10 或太貴）" : `高濃縮建議：從 +${res.firstHigh} 開始用 high`);
+      lines.push(res.firstHigh == null ? "高濃縮建議：未使用 高濃縮（可能目標 < +10 或太貴）" : `高濃縮建議：從 +${res.firstHigh} 開始用 high`);
     }
     if (opts.allowBless && !opts.forceNoBless){
-      lines.push(res.firstBless == null ? "祝福建議：未使用祝福" : `祝福建議：從 +${res.firstBless} 起開始使用祝福`);
+      lines.push(res.firstBless == null ? "鐵祝建議：未使用鐵祝" : `鐵祝建議：從 +${res.firstBless} 起開始使用鐵祝`);
     } else {
-      lines.push("祝福已禁用：不提供祝福建議");
+      lines.push("鐵祝已禁用：不提供鐵祝建議");
     }
   }
   lines.push("");
@@ -525,3 +525,4 @@ render();
 </script>
 </body>
 </html>
+
