@@ -5,28 +5,135 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>裝備精煉期望值計算器 (五級武器二級防具)</title>
   <style>
-    body { font-family: system-ui, -apple-system, "Segoe UI", Arial, sans-serif; margin: 24px; }
-    .wrap { max-width: 980px; margin: 0 auto; }
-    h1 { font-size: 20px; margin: 0 0 12px; }
-    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-    .card { border: 1px solid #ddd; border-radius: 10px; padding: 14px; }
-    .row { display: flex; gap: 10px; align-items: center; margin: 8px 0; flex-wrap: wrap; }
-    label { font-size: 13px; }
-    input[type="number"] { width: 120px; padding: 6px 8px; }
-    select { padding: 6px 8px; }
-    .prices { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 12px; }
-    .prices .p { display: flex; justify-content: space-between; gap: 10px; align-items: center; }
-    .prices .p input { width: 140px; }
-    button { padding: 10px 14px; border: 1px solid #333; background: #fff; border-radius: 10px; cursor: pointer; }
-    button:hover { background: #f6f6f6; }
-    textarea { width: 100%; height: 420px; padding: 10px; border-radius: 10px; border: 1px solid #ddd; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; }
-    .hint { color: #666; font-size: 12px; margin-top: 8px; line-height: 1.4; }
-    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+    :root{
+      --bd:#ddd;
+      --text:#111;
+      --muted:#666;
+      --bg:#fff;
+      --bg2:#fafafa;
+      --btn:#111;
+      --btnbg:#fff;
+      --shadow: 0 1px 0 rgba(0,0,0,.03);
+      --r:12px;
+    }
+    *{ box-sizing:border-box; }
+    body{
+      font-family: system-ui, -apple-system, "Segoe UI", Arial, sans-serif;
+      margin: 24px;
+      color: var(--text);
+      background: var(--bg);
+    }
+    .wrap{ max-width: 980px; margin: 0 auto; }
+    h1{ font-size: 20px; margin: 0 0 12px; }
+    .grid{
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      align-items: start;
+    }
+    .card{
+      border: 1px solid var(--bd);
+      border-radius: var(--r);
+      padding: 14px;
+      box-shadow: var(--shadow);
+      background: var(--bg);
+    }
+    .row{
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      margin: 8px 0;
+      flex-wrap: wrap;
+    }
+    label{ font-size: 13px; }
+    input[type="number"], select{
+      width: 120px;
+      padding: 7px 10px;
+      border-radius: 10px;
+      border: 1px solid var(--bd);
+      background: var(--bg);
+    }
+    input[type="checkbox"], input[type="radio"]{ transform: translateY(1px); }
+    .prices{
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px 12px;
+    }
+    .prices .p{
+      display:flex;
+      justify-content: space-between;
+      gap: 10px;
+      align-items:center;
+    }
+    .prices .p input{ width: 150px; }
+    button{
+      padding: 10px 14px;
+      border: 1px solid var(--btn);
+      background: var(--btnbg);
+      border-radius: 12px;
+      cursor: pointer;
+      font-weight: 600;
+    }
+    button:hover{ background: var(--bg2); }
+    textarea{
+      width: 100%;
+      height: 420px;
+      padding: 10px;
+      border-radius: 12px;
+      border: 1px solid var(--bd);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 12px;
+      background: var(--bg);
+    }
+    .hint{
+      color: var(--muted);
+      font-size: 12px;
+      margin-top: 8px;
+      line-height: 1.5;
+    }
+    .mono{ font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+
+    /* ===== Mobile Responsive ===== */
+    @media (max-width: 768px){
+      body{ margin: 14px; }
+      h1{ font-size: 18px; }
+
+      .grid{ grid-template-columns: 1fr; }
+
+      .card{ padding: 12px; border-radius: 14px; }
+
+      /* Rows become vertical for touch friendliness */
+      .row{
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+      }
+
+      input[type="number"], select{ width: 100%; }
+
+      .prices{
+        grid-template-columns: 1fr;
+      }
+      .prices .p{
+        width: 100%;
+      }
+      .prices .p input{
+        width: 100%;
+      }
+
+      button{
+        width: 100%;
+      }
+
+      textarea{
+        height: 360px;
+      }
+    }
   </style>
 </head>
 <body>
 <div class="wrap">
-  <h1>裝備精煉期望值計算器(五級武器二級防具)</h1>
+  <h1>裝備精煉期望值計算器 (五級武器二級防具)</h1>
 
   <div class="grid">
     <div class="card">
@@ -62,7 +169,7 @@
         <label>固定策略：從 +</label>
         <input type="number" id="fixedFrom" min="0" max="13" value="7" />
         <label>以上用濃縮/高濃縮</label>
-        <label style="margin-left:8px;"><input type="checkbox" id="fixedUseBless" checked> 固定策略允許鐵祝</label>
+        <label><input type="checkbox" id="fixedUseBless" checked> 固定策略允許鐵祝</label>
       </div>
 
       <div class="hint">
@@ -74,27 +181,29 @@
     </div>
 
     <div class="card">
-      <div style="font-weight:600; margin-bottom:8px;">材料實價 (去露天挖)</div>
+      <div style="font-weight:700; margin-bottom:8px;">材料實價</div>
       <div class="prices" id="prices"></div>
 
       <div class="row" style="margin-top:12px;">
         <button id="calc">計算（重算）</button>
         <button id="copy">複製結果</button>
       </div>
+
       <div class="hint">
-        * 本工具是純前端：所有計算都在你的瀏覽器跑（吃使用者電腦資源，不吃伺服器）。
+        * 計算在本地瀏覽器執行（吃使用者電腦資源）。<br/>
+        * 同一分頁未關閉可保留你輸入的價格/選項。
       </div>
     </div>
   </div>
 
   <div class="card" style="margin-top:16px;">
-    <div style="font-weight:600; margin-bottom:8px;">結果</div>
+    <div style="font-weight:700; margin-bottom:8px;">結果</div>
     <textarea id="out" readonly></textarea>
   </div>
 </div>
 
 <script>
-/** ===== Rules (same as your table; target up to +14) ===== **/
+/** ===== Rules ===== **/
 const P_SUCCESS_NORMAL = {
   0:1.00, 1:1.00, 2:1.00,
   3:0.60, 4:0.60, 5:0.40, 6:0.40, 7:0.20, 8:0.20, 9:0.09,
@@ -106,10 +215,7 @@ const P_SUCCESS_COND = {
   10:0.15, 11:0.15, 12:0.15, 13:0.15,
 };
 
-// Bless required (i means i->i+1)
 const BLESS_REQ = { 7:1, 8:2, 9:3, 10:4, 11:4, 12:9, 13:15 };
-
-// Protection behavior: fail => stay
 const FAIL_TO_PROTECTED = "stay";
 
 function failRuleNormal(i){ return (i <= 9) ? "down:3" : "destroy"; }
@@ -127,8 +233,6 @@ function applyFail(i, failTo){
 
 /** ===== Materials mapping ===== **/
 function materialForSegment(gear, i, mode){
-  // gear: "armor"|"weapon"
-  // mode: "normal"|"condensed"|"high"
   if (gear === "armor"){
     if (i <= 9){
       return (mode === "normal") ? "乙太鋁" : "濃縮乙太鋁";
@@ -144,9 +248,7 @@ function materialForSegment(gear, i, mode){
   }
 }
 
-function fmt(n){
-  return Math.round(n).toLocaleString("en-US");
-}
+function fmt(n){ return Math.round(n).toLocaleString("en-US"); }
 
 /** ===== Build actions ===== **/
 function buildActions(gear, prices, target, opts){
@@ -235,7 +337,6 @@ function expectedCostOptimal(actionsByLevel, target){
 
 /** ===== Fixed policy (solve linear system) ===== **/
 function expectedCostFixed(actionsByLevel, chosen, target){
-  // Solve A x = b for x = E[0..target-1], E[target]=0
   const A = Array.from({length: target}, () => new Array(target).fill(0));
   const b = new Array(target).fill(0);
 
@@ -259,24 +360,21 @@ function expectedCostFixed(actionsByLevel, chosen, target){
     if (fail < target) A[i][fail] -= pf;
   }
 
-  // Gaussian elimination (small system, target<=14)
+  // Gaussian elimination (target<=14)
   const M = A.map((row, i) => row.concat([b[i]]));
 
   for (let col=0; col<target; col++){
-    // pivot
     let pivot = col;
     for (let r=col; r<target; r++){
       if (Math.abs(M[r][col]) > Math.abs(M[pivot][col])) pivot = r;
     }
-    if (Math.abs(M[pivot][col]) < 1e-14) throw new Error("矩陣不可解（可能策略導致）");
+    if (Math.abs(M[pivot][col]) < 1e-14) throw new Error("矩陣不可解（策略可能導致）");
     if (pivot !== col){
       const tmp = M[pivot]; M[pivot] = M[col]; M[col] = tmp;
     }
-    // normalize
     const div = M[col][col];
     for (let c=col; c<=target; c++) M[col][c] /= div;
 
-    // eliminate
     for (let r=0; r<target; r++){
       if (r === col) continue;
       const factor = M[r][col];
@@ -314,7 +412,6 @@ function buildFixedChoice(actionsByLevel, target, opts, fixedFrom, fixedUseBless
         pick = available.find(n => n.startsWith(prefix + "(")) || null;
       }
       if (!pick){
-        // fallback normal
         if (canBless) pick = available.find(n => n.startsWith("normal+protect")) || null;
         if (!pick) pick = available.find(n => n.startsWith("normal(")) || null;
       }
@@ -331,7 +428,7 @@ function buildFixedChoice(actionsByLevel, target, opts, fixedFrom, fixedUseBless
   return chosen;
 }
 
-/** ===== Main compute (for selected target) ===== **/
+/** ===== Main compute ===== **/
 function computeAll(gear, prices, opts, mode, fixedFrom, fixedUseBless, target){
   const actionsT = buildActions(gear, prices, target, opts);
 
@@ -347,7 +444,6 @@ function computeAll(gear, prices, opts, mode, fixedFrom, fixedUseBless, target){
     best = res.best;
   }
 
-  // +0 -> +k (k=0..target)
   const E_0_to_k = [0];
   for (let k=1; k<=target; k++){
     const actionsK = buildActions(gear, prices, k, opts);
@@ -361,11 +457,9 @@ function computeAll(gear, prices, opts, mode, fixedFrom, fixedUseBless, target){
     }
   }
 
-  // interval costs
   const segCosts = [];
   for (let i=0; i<target; i++) segCosts.push(E_to_T[i] - E_to_T[i+1]);
 
-  // recommendations (only for optimal)
   let firstCond=null, firstHigh=null, firstBless=null;
   if (mode === "optimal"){
     for (let i=0; i<target; i++){
@@ -465,11 +559,11 @@ function render(){
     if (!opts.allowCondensed){
       lines.push("濃縮材料已禁用：不提供濃縮/高濃縮建議");
     } else {
-      lines.push(res.firstCond == null ? "濃縮建議：未使用 condensed" : `濃縮建議：從 +${res.firstCond} 開始用 condensed`);
-      lines.push(res.firstHigh == null ? "高濃縮建議：未使用 高濃縮（可能目標 < +10 或太貴）" : `高濃縮建議：從 +${res.firstHigh} 開始用 high`);
+      lines.push(res.firstCond == null ? "濃縮建議：未使用 濃縮" : `濃縮建議：從 +${res.firstCond} 開始用 濃縮`);
+      lines.push(res.firstHigh == null ? "高濃縮建議：未使用 高濃縮（可能目標 < +10 或太貴）" : `高濃縮建議：從 +${res.firstHigh} 開始用 高濃縮`);
     }
     if (opts.allowBless && !opts.forceNoBless){
-      lines.push(res.firstBless == null ? "鐵祝建議：未使用鐵祝" : `鐵祝建議：從 +${res.firstBless} 起開始使用鐵祝`);
+      lines.push(res.firstBless == null ? "鐵祝建議：未使用祝福" : `鐵祝建議：從 +${res.firstBless} 起開始使用鐵祝`);
     } else {
       lines.push("鐵祝已禁用：不提供鐵祝建議");
     }
@@ -501,10 +595,80 @@ function render(){
   document.getElementById("out").value = lines.join("\n");
 }
 
+/** ===== sessionStorage: keep inputs in the same tab session ===== **/
+const SESSION_KEY = "refine_ev_session_v1";
+
+function snapshotFormState(){
+  const state = {
+    target: document.getElementById("target").value,
+    gear: getGear(),
+    mode: getMode(),
+    allowCond: document.getElementById("allowCond").checked,
+    allowBless: document.getElementById("allowBless").checked,
+    forceNoBless: document.getElementById("forceNoBless").checked,
+    fixedFrom: document.getElementById("fixedFrom").value,
+    fixedUseBless: document.getElementById("fixedUseBless").checked,
+    prices: {}
+  };
+  for (const k of priceKeys){
+    state.prices[k] = document.getElementById("p_" + k).value;
+  }
+  sessionStorage.setItem(SESSION_KEY, JSON.stringify(state));
+}
+
+function restoreFormState(){
+  const raw = sessionStorage.getItem(SESSION_KEY);
+  if (!raw) return;
+  try {
+    const state = JSON.parse(raw);
+
+    if (state.target) document.getElementById("target").value = state.target;
+
+    if (state.gear){
+      const g = [...document.querySelectorAll('input[name="gear"]')].find(r => r.value === state.gear);
+      if (g) g.checked = true;
+    }
+    if (state.mode){
+      const m = [...document.querySelectorAll('input[name="mode"]')].find(r => r.value === state.mode);
+      if (m) m.checked = true;
+    }
+
+    if (typeof state.allowCond === "boolean") document.getElementById("allowCond").checked = state.allowCond;
+    if (typeof state.allowBless === "boolean") document.getElementById("allowBless").checked = state.allowBless;
+    if (typeof state.forceNoBless === "boolean") document.getElementById("forceNoBless").checked = state.forceNoBless;
+
+    if (state.fixedFrom != null) document.getElementById("fixedFrom").value = state.fixedFrom;
+    if (typeof state.fixedUseBless === "boolean") document.getElementById("fixedUseBless").checked = state.fixedUseBless;
+
+    if (state.prices){
+      for (const k of priceKeys){
+        if (state.prices[k] != null){
+          document.getElementById("p_" + k).value = state.prices[k];
+        }
+      }
+    }
+  } catch {
+    // ignore
+  }
+}
+
+function bindAutosave(){
+  document.addEventListener("input", (e) => {
+    const id = e.target && e.target.id;
+    if (!id) return;
+    if (id.startsWith("p_") || id === "fixedFrom") snapshotFormState();
+  });
+  document.addEventListener("change", () => snapshotFormState());
+}
+
+/** ===== Init ===== **/
 buildPriceInputs();
+restoreFormState();
+bindAutosave();
+render();
 
 document.getElementById("calc").addEventListener("click", () => {
-  try { render(); } catch(e){ alert(e.message || String(e)); }
+  try { render(); snapshotFormState(); } catch(e){ alert(e.message || String(e)); }
 });
 
 document.getElementById("copy").addEventListener("click", async () => {
@@ -513,17 +677,11 @@ document.getElementById("copy").addEventListener("click", async () => {
     await navigator.clipboard.writeText(text);
     alert("已複製到剪貼簿");
   } catch {
-    // fallback
     document.getElementById("out").select();
     document.execCommand("copy");
     alert("已複製到剪貼簿（fallback）");
   }
 });
-
-// Auto render once
-render();
 </script>
 </body>
 </html>
-
-
